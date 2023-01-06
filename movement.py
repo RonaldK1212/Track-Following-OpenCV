@@ -1,6 +1,6 @@
 import RPi.GPIO as GPIO
 import time
-import pygame
+
 
 
 def setup_motors(motorLP, motorLN, motorRP, motorRN, pwmFreq):

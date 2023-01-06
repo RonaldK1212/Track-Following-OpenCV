@@ -1,11 +1,14 @@
 import numpy as np
 import cv2
-import movement as m
+try: import movement as m
+except: pass
 
-video_capture = cv2.VideoCapture(0)
+video_capture = cv2.VideoCapture(1)
 video_capture.set(3, 800)
 video_capture.set(4, 600)
-video_capture.set(cv2.CAP_PROP_FPS, 5)
+video_capture.set(cv2.CAP_PROP_EXPOSURE, -4)
+
+#video_capture.set(cv2.CAP_PROP_FPS, 5)
 
 
 def checkCoords(x1, x2):
@@ -37,7 +40,7 @@ while(True):
     
     thresh = cv2.adaptiveThreshold(dilation, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,15,4)
     contours,hierarchy = cv2.findContours(thresh.copy(), 1, cv2.CHAIN_APPROX_NONE)
-    crop_img = dilation
+    crop_img = thresh
     
     r_contours = []
     angles = []
