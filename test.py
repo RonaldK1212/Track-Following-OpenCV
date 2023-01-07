@@ -1,19 +1,36 @@
 import numpy as np
 import cv2
-import movement as m
+try: import movement as m
+except: pass
+import time
 
-IMAGE_H = 600
-IMAGE_W = 800
+IMAGE_W = 640
+IMAGE_H = 480
+FPS = 60
 
-video_capture = cv2.VideoCapture(0)
+video_capture = cv2.VideoCapture(1)
+
 video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, IMAGE_W)
 video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, IMAGE_H)
 #video_capture.set(cv2.CAP_PROP_EXPOSURE, -4)
-video_capture.set(cv2.CAP_PROP_EXPOSURE, -4)
-video_capture.set(cv2.CAP_PROP_FPS, 10)
+video_capture.set(cv2.CAP_PROP_EXPOSURE, -5)
+video_capture.set(cv2.CAP_PROP_FPS, FPS)
 
+
+
+
+#USED TO CREATE A TRACKBAR FOR TESTING VALUES
+def nothing():
+    pass
+#cv2.namedWindow('trackbar')
+#cv2.createTrackbar('R', 'trackbar', 0, 255, nothing)
+
+
+
+
+#Bottom Left - Bottom Right - Top Left - Top Right
 src = np.float32([[0, IMAGE_H], [IMAGE_W, IMAGE_H], [0, 0], [IMAGE_W, 0]])
-dst = np.float32([[(IMAGE_W/2)-IMAGE_W/10, IMAGE_H], [(IMAGE_W/2)+IMAGE_W/10, IMAGE_H], [0, 0], [IMAGE_W, 0]])
+dst = np.float32([[(IMAGE_W/2)-80, IMAGE_H], [(IMAGE_W/2)+80, IMAGE_H], [0, 0], [IMAGE_W, 0]])
 M = cv2.getPerspectiveTransform(src, dst) # The transformation matrix
 Minv = cv2.getPerspectiveTransform(dst, src) # Inverse transformation
 
@@ -21,21 +38,32 @@ theta = 0
 center = 95
 k = 2.5
 
+region_threshold = 0
+
+region_left = [0, (IMAGE_W/3) + region_threshold]
+region_right = [IMAGE_W - (IMAGE_W/3) - region_threshold, IMAGE_W]
+
+
+
 while True:
+    
     theta = 0
     ret,orig_frame = video_capture.read()
+    #r = cv2.getTrackbarPos('R','trackbar')
+    cv2.imshow('original',orig_frame)
     
-    frame = orig_frame[50:400,:]
+
+    frame = orig_frame#[-65:-90,:]
     frame = 255 - frame
     frame = cv2.warpPerspective(frame, M, (IMAGE_W, IMAGE_H)) # Image warping
-    frame = frame[200:-100 , 250:-180]
+    frame = frame[-220:-120 , 100:-100]
     frame = 255 - frame
-    blur = cv2.GaussianBlur(frame, (9,9), 3)
+    blur = cv2.GaussianBlur(frame, (5,5), 3)
     gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
 
     #adaptiveThreshold(src: Mat, maxValue: Any, adaptiveMethod: Any, thresholdType: Any, blockSize: Any, C: Any, dts: Mat = ...)
     #thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,9,2)
-    ret, thresh = cv2.threshold(gray, 90, 255, cv2.THRESH_BINARY_INV)
+    ret, thresh = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV)
     #Canny(InputArray image, OutputArray edges, double threshold1, double threshold2, int apertureSize=3, bool L2gradient=false)
     #dst = cv2.Canny(thresh, 50, 255, None, 3)
     contours,hierarchy = cv2.findContours(thresh.copy(), 1, cv2.CHAIN_APPROX_NONE)
@@ -44,11 +72,12 @@ while True:
     r_contours = []
     angles = []
     centers = []
+
     if len(contours) > 0:
         
         for n,c in enumerate(contours): # Filter contours and analyze them
             
-            if cv2.contourArea(c) < 600:
+            if cv2.contourArea(c) < 200:
                 continue
             Mo = cv2.moments(c)
             try:
@@ -71,37 +100,30 @@ while True:
             if width < height:
                 angle = angle+90
             angles.append(angle)
-            centers.append((cx, cy))
+            centers.append(cx)
         try:
             theta = (sum(angles)/len(angles))-90
         except:
             theta = 0
-        print(f"Angles = {angles}")
-        print(f"Theta = {theta}")
-        m.move_servo(95+float(theta))
-        m.forward(15)
+        
+        centers.sort()
+
+        for i,center in enumerate(centers):
+            print(f"Center x{i+1}:", center, end="\t")
+
+        print()
+
+        
+
+        #m.move_servo(95+float(theta))
+        #m.forward(15)
         
 
 
-    #HoughLinesP(InputArray image, OutputArray lines, double rho, double theta, int threshold, double minLineLength=0, double maxLineGap=0)
-    #linesP = cv2.HoughLinesP(dst, 1, np.pi / 180, 50, 20, 20, 20)
     
-    #if linesP is not None:
-    #    for i in range(0, len(linesP)):
-    #        l = linesP[i][0]
-    #        x1,y1,x2,y2 = l[0], l[1], l[2], l[3]
-    #        cv2.line(frame, (x1, y1), (x2, y2), (0,0,255), 2, cv2.LINE_AA)
-            
-    #        theta=theta+np.arctan2((y2-y1),(x2-x1))
-    
-    #angle = center-theta*k
-    #print(angle)
-    #m.move_servo(angle)
-    #output = thresh
-    #cv2.imshow('original',orig_frame)
-    #cv2.imshow('process',dst)
+    cv2.imshow('process',thresh)
     cv2.imshow('output',frame)
-    
+    #time.sleep(1/FPS)
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        m.stop_moving()
+        #m.stop_moving()
         break
