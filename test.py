@@ -20,10 +20,11 @@ video_capture.set(cv2.CAP_PROP_FPS, FPS)
 
 
 #USED TO CREATE A TRACKBAR FOR TESTING VALUES
-def nothing():
+def nothing(_):
     pass
-#cv2.namedWindow('trackbar')
-#cv2.createTrackbar('R', 'trackbar', 0, 255, nothing)
+cv2.namedWindow('trackbar')
+cv2.createTrackbar('region_left', 'trackbar', 180, IMAGE_W, nothing)
+cv2.createTrackbar('region_right', 'trackbar', 460, IMAGE_W, nothing)
 
 
 
@@ -40,8 +41,7 @@ k = 2.5
 
 region_threshold = 0
 
-region_left = [0, (IMAGE_W/3) + region_threshold]
-region_right = [IMAGE_W - (IMAGE_W/3) - region_threshold, IMAGE_W]
+
 
 
 
@@ -49,14 +49,13 @@ while True:
     
     theta = 0
     ret,orig_frame = video_capture.read()
-    #r = cv2.getTrackbarPos('R','trackbar')
     cv2.imshow('original',orig_frame)
     
 
     frame = orig_frame#[-65:-90,:]
     frame = 255 - frame
     frame = cv2.warpPerspective(frame, M, (IMAGE_W, IMAGE_H)) # Image warping
-    frame = frame[-220:-120 , 100:-100]
+    frame = frame[-220:-120 , :]
     frame = 255 - frame
     blur = cv2.GaussianBlur(frame, (5,5), 3)
     gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
@@ -72,7 +71,10 @@ while True:
     r_contours = []
     angles = []
     centers = []
+    error = 0
 
+    region_left = cv2.getTrackbarPos('region_left','trackbar')
+    region_right = cv2.getTrackbarPos('region_right','trackbar')
     if len(contours) > 0:
         
         for n,c in enumerate(contours): # Filter contours and analyze them
@@ -89,6 +91,8 @@ while True:
             cv2.line(frame, (cx+40, cy+40), (cx-40, cy-40), (255, 150, 0),1)
             cv2.line(frame, (cx+40, cy-40), (cx-40, cy+40), (255, 150, 0),1)
             cv2.drawContours(frame, c, -1, (255, 255, 0))
+            cv2.line(frame, (region_left, 0), (region_left, IMAGE_H), (0,0,255), 2)
+            cv2.line(frame, (region_right, 0), (region_right, IMAGE_H), (0,0,255), 2)
             
             rect = cv2.minAreaRect(c)
             center,(width,height),angle = rect
@@ -111,11 +115,23 @@ while True:
         for i,center in enumerate(centers):
             print(f"Center x{i+1}:", center, end="\t")
 
-        print()
-
         
 
-        #m.move_servo(95+float(theta))
+        if len(centers) == 1:
+            if centers[0] < IMAGE_W/2:
+                error = region_left - centers[0]
+            else:
+                error = region_right - centers[0]
+
+        if len(centers) >= 2:
+            error = IMAGE_W/2 - np.mean(centers)
+
+        #error = -error
+
+        print("Error: ", error)
+        
+
+        m.move_servo(95-error)
         #m.forward(15)
         
 
