@@ -3,12 +3,12 @@ import cv2
 try: import movement as m
 except: pass
 
-video_capture = cv2.VideoCapture(1)
+video_capture = cv2.VideoCapture(0)
 video_capture.set(3, 800)
 video_capture.set(4, 600)
 video_capture.set(cv2.CAP_PROP_EXPOSURE, -4)
 
-#video_capture.set(cv2.CAP_PROP_FPS, 5)
+video_capture.set(cv2.CAP_PROP_FPS, 5)
 
 
 def checkCoords(x1, x2):
